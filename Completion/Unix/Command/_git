@@ -5543,66 +5543,92 @@ __git_setup_diff_options () {
     '--output[undocumented]:undocumented')
 }
 
+(( $+functions[__git_setup_pretty_aliases] )) ||
+__git_setup_pretty_aliases () {
+  local spec name pfmt IFS=$'\n'
+  local -a aliases
+  aliases=()
+  for spec in $(git config --get-regexp '^pretty\.' 2>/dev/null); do
+    name="${${spec#pretty.}/ */}"
+    pfmt="${spec#pretty.$name }"
+    pfmt="$(sed 's_\([]:["]\)_\\\1_g' <<<"$pfmt")" # escapes ], :, [, and "
+    aliases+=(${name}'\:"git config alias for\: '${pfmt}'"')
+  done
+  pretty_aliases="${(pj:\n:)aliases}"
+}
+
+(( $+functions[__git_setup_pretty_options] )) ||
+__git_setup_pretty_options () {
+  local main fmts
+  main='oneline\:"commit-ids and subject of messages"
+        short\:"few headers and only subject of messages"
+        medium\:"most parts of messages"
+        full\:"all parts of commit messages"
+        fuller\:"like full and includes dates"
+        email\:"use email headers like From and Subject"
+        raw\:"the raw commits"
+        format\:"specify own format"
+        '
+  __git_setup_pretty_aliases
+  fmts='
+    %H\:"commit hash"
+    %h\:"abbreviated commit hash"
+    %T\:"tree hash"
+    %t\:"abbreviated tree hash"
+    %P\:"parent hashes"
+    %p\:"abbreviated parent hashes"
+    %an\:"author name"
+    %aN\:"author name (respecting .mailmap)"
+    %ae\:"author email"
+    %aE\:"author email (respecting .mailmap)"
+    %ad\:"author date (format respects --date= option)"
+    %aD\:"author date, RFC2822 style"
+    %ar\:"author date, relative"
+    %at\:"author date, UNIX timestamp"
+    %ai\:"author date, ISO 8601 format"
+    %cn\:"committer name"
+    %cN\:"committer name (respecting .mailmap)"
+    %ce\:"committer email"
+    %cE\:"committer email (respecting .mailmap)"
+    %cd\:"committer date"
+    %cD\:"committer date, RFC2822 style"
+    %cr\:"committer date, relative"
+    %ct\:"committer date, UNIX timestamp"
+    %ci\:"committer date, ISO 8601 format"
+    %d\:"ref names, like the --decorate option of git-log(1)"
+    %e\:"encoding"
+    %s\:"subject"
+    %f\:"sanitized subject line, suitable for a filename"
+    %b\:"body"
+    %B\:"raw body (unwrapped subject and body)"
+    %N\:"commit notes"
+    %gD\:"reflog selector, e.g., refs/stash@{1}"
+    %gd\:"shortened reflog selector, e.g., stash@{1}"
+    %gs\:"reflog subject"
+    %Cred\:"switch color to red"
+    %Cgreen\:"switch color to green"
+    %Cblue\:"switch color to blue"
+    %Creset\:"reset color"
+    %C(...)\:"color specification, as described in color.branch.* config option"
+    %m\:"left, right or boundary mark"
+    %n\:"newline"
+    %%\:"a raw %"
+    %x00\:"print a byte from a hex code"'
+  pretty_options='[pretty print commit messages]::format:(('${main}${pretty_aliases}${fmts}'))'
+}
+
+
 (( $+functions[__git_setup_revision_options] )) ||
 __git_setup_revision_options () {
   local -a diff_options
   __git_setup_diff_options
+  __git_setup_pretty_options
 
   revision_options=(
     $diff_options
     # TODO: format pretty print format is a lot more advanced than this.
     # TODO: You can’t actually specify --format without a format.
-    '(-v --header)'{--pretty=-,--format=-}'[pretty print commit messages]::format:((oneline\:"commit-ids and subject of messages"
-                                                                                    short\:"few headers and only subject of messages"
-                                                                                    medium\:"most parts of messages"
-                                                                                    full\:"all parts of commit messages"
-                                                                                    fuller\:"like full and includes dates"
-                                                                                    email\:"use email headers like From and Subject"
-                                                                                    raw\:"the raw commits"
-                                                                                    format\:"specify own format"
-                                                                                    %H\:"commit hash"
-                                                                                    %h\:"abbreviated commit hash"
-                                                                                    %T\:"tree hash"
-                                                                                    %t\:"abbreviated tree hash"
-                                                                                    %P\:"parent hashes"
-                                                                                    %p\:"abbreviated parent hashes"
-                                                                                    %an\:"author name"
-                                                                                    %aN\:"author name (respecting .mailmap)"
-                                                                                    %ae\:"author email"
-                                                                                    %aE\:"author email (respecting .mailmap)"
-                                                                                    %ad\:"author date (format respects --date= option)"
-                                                                                    %aD\:"author date, RFC2822 style"
-                                                                                    %ar\:"author date, relative"
-                                                                                    %at\:"author date, UNIX timestamp"
-                                                                                    %ai\:"author date, ISO 8601 format"
-                                                                                    %cn\:"committer name"
-                                                                                    %cN\:"committer name (respecting .mailmap)"
-                                                                                    %ce\:"committer email"
-                                                                                    %cE\:"committer email (respecting .mailmap)"
-                                                                                    %cd\:"committer date"
-                                                                                    %cD\:"committer date, RFC2822 style"
-                                                                                    %cr\:"committer date, relative"
-                                                                                    %ct\:"committer date, UNIX timestamp"
-                                                                                    %ci\:"committer date, ISO 8601 format"
-                                                                                    %d\:"ref names, like the --decorate option of git-log(1)"
-                                                                                    %e\:"encoding"
-                                                                                    %s\:"subject"
-                                                                                    %f\:"sanitized subject line, suitable for a filename"
-                                                                                    %b\:"body"
-                                                                                    %B\:"raw body (unwrapped subject and body)"
-                                                                                    %N\:"commit notes"
-                                                                                    %gD\:"reflog selector, e.g., refs/stash@{1}"
-                                                                                    %gd\:"shortened reflog selector, e.g., stash@{1}"
-                                                                                    %gs\:"reflog subject"
-                                                                                    %Cred\:"switch color to red"
-                                                                                    %Cgreen\:"switch color to green"
-                                                                                    %Cblue\:"switch color to blue"
-                                                                                    %Creset\:"reset color"
-                                                                                    %C(...)\:"color specification, as described in color.branch.* config option"
-                                                                                    %m\:"left, right or boundary mark"
-                                                                                    %n\:"newline"
-                                                                                    %%\:"a raw %"
-                                                                                    %x00\:"print a byte from a hex code"))'
+    '(-v --header)'{--pretty=-,--format=-}${pretty_options}
     '--abbrev-commit[show only partial prefixes of commit object names]'
     '--oneline[shorthand for --pretty=oneline --abbrev-commit]'
     '--encoding=-[output log messages in given encoding]:: :__git_encodings'
